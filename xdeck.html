@@ -589,7 +589,7 @@ function buildEmbedHTML(feed) {
       data-theme="${theme}"
       data-tweet-limit="20"
       data-chrome="noheader nofooter noborders"
-      href="https://twitter.com/i/lists/${parsed.listId}">
+      href="https://twitter.com/i/lists/${parsed.listId}?ref_src=twsrc%5Etfw">
       リストを読み込み中...</a>`;
   }
 
@@ -599,7 +599,7 @@ function buildEmbedHTML(feed) {
       data-theme="${theme}"
       data-tweet-limit="20"
       data-chrome="noheader nofooter noborders"
-      href="https://twitter.com/${parsed.handle}">
+      href="https://twitter.com/${parsed.handle}?ref_src=twsrc%5Etfw">
       @${parsed.handle} のツイートを読み込み中...</a>`;
   }
 
@@ -699,7 +699,7 @@ function selectFeed(id) {
 
   const script = document.createElement('script');
   script.id = 'tw-widgets-script';
-  script.src = 'https://platform.twitter.com/widgets.js';
+  script.src = 'https://platform.x.com/widgets.js';
   script.charset = 'utf-8';
   script.async = true;
   script.onload = () => {
