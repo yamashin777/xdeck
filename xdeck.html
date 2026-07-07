@@ -3,859 +3,295 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>xdeck</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="X ランチャー">
+<meta name="theme-color" content="#0f0f0f">
+<title>X ランチャー</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 :root {
-  --sidebar-w: 220px;
-  --sidebar-w-collapsed: 56px;
-  --header-h: 48px;
-  --accent: #1a8cd8;
-  --accent-hover: #1671b3;
-  --bg: #f7f9fa;
-  --bg-panel: #ffffff;
-  --bg-sidebar: #0f1117;
-  --bg-sidebar-hover: #1a1f2e;
-  --bg-sidebar-active: #1d2640;
-  --text-primary: #0f0f0f;
-  --text-secondary: #555;
-  --text-muted: #888;
-  --text-sidebar: #c8cdd8;
-  --text-sidebar-active: #ffffff;
-  --border: rgba(0,0,0,0.08);
-  --shadow: 0 1px 4px rgba(0,0,0,0.08);
-  --radius: 10px;
-  --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
+  --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #262626;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f0; --muted: #666;
+  --accent: #1d9bf0; --accent-dim: rgba(29,155,240,0.12); --accent-border: rgba(29,155,240,0.3);
+  --danger: #e0445a; --radius: 12px; --radius-sm: 8px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d0d0d;
-    --bg-panel: #111318;
-    --text-primary: #f0f0f0;
-    --text-secondary: #aaa;
-    --text-muted: #666;
-    --border: rgba(255,255,255,0.07);
-  }
-}
+/* ヘッダー */
+#header { padding: calc(var(--safe-top) + 12px) 16px 12px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.logo { width: 28px; height: 28px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo svg { width: 14px; height: 14px; fill: #fff; }
+#header-title { font-size: 15px; font-weight: 600; flex: 1; letter-spacing: -0.3px; }
+#add-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); border: none; color: var(--accent); font-size: 22px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
 
-html, body {
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-  background: var(--bg);
-  color: var(--text-primary);
-  overflow: hidden;
-}
+/* リスト */
+#list-wrap { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 12px calc(var(--safe-bottom) + 16px); }
 
-/* ── Layout ── */
-#app {
-  display: flex;
-  height: 100vh;
-  height: 100dvh;
-}
+/* グループ */
+.group-header { display: flex; align-items: center; padding: 16px 4px 6px; gap: 6px; cursor: pointer; user-select: none; }
+.group-chevron { font-size: 10px; color: var(--muted); transition: transform 0.2s; display: inline-block; }
+.group-chevron.open { transform: rotate(90deg); }
+.group-name { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); flex: 1; }
+.group-open-all { font-size: 11px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; padding: 4px 6px; }
+.group-items.collapsed { display: none; }
 
-/* ── Sidebar ── */
-#sidebar {
-  width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-  background: var(--bg-sidebar);
-  display: flex;
-  flex-direction: column;
-  transition: width var(--transition), min-width var(--transition);
-  overflow: hidden;
-  z-index: 30;
-  flex-shrink: 0;
-}
-#sidebar.collapsed {
-  width: var(--sidebar-w-collapsed);
-  min-width: var(--sidebar-w-collapsed);
-}
+/* アイテム */
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: var(--radius); margin-bottom: 4px; cursor: pointer; background: var(--surface); border: 1px solid var(--border); position: relative; transition: background 0.1s; }
+.nav-item:active { background: var(--surface2); }
+.nav-item.active { background: var(--surface2); border-color: var(--accent-border); }
+.nav-item.active::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--accent); }
 
-#sidebar-header {
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}
-.logo {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.5px;
-  white-space: nowrap;
-  opacity: 1;
-  transition: opacity var(--transition);
-}
-.logo span { color: var(--accent); }
-#sidebar.collapsed .logo { opacity: 0; width: 0; overflow: hidden; }
+/* アバター */
+.nav-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--muted); flex-shrink: 0; overflow: hidden; }
+.nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.nav-avatar.list-av { border-radius: 8px; background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+.nav-avatar svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.nav-info { flex: 1; min-width: 0; }
+.nav-label { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-url { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.nav-arrow { font-size: 18px; color: var(--muted); flex-shrink: 0; line-height: 1; }
 
-#collapse-btn {
-  margin-left: auto;
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: rgba(255,255,255,0.08);
-  color: var(--text-sidebar);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  font-size: 13px;
-  transition: background 0.15s;
-}
-#collapse-btn:hover { background: rgba(255,255,255,0.16); }
-#sidebar.collapsed #collapse-btn { margin-left: 0; }
+.add-group-btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 12px; background: none; border: 1px dashed var(--border2); border-radius: var(--radius); color: var(--muted); font-size: 13px; font-family: inherit; cursor: pointer; margin-top: 12px; }
+.empty { text-align: center; padding: 24px 16px; color: var(--muted); font-size: 13px; }
 
-/* Nav list */
-#nav-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.1) transparent;
-}
+/* モーダル（下から） */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; display: flex; align-items: flex-end; }
+.modal { background: #1c1c1e; border-radius: 20px 20px 0 0; padding: 8px 20px calc(var(--safe-bottom) + 20px); width: 100%; max-height: 85vh; overflow-y: auto; }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 8px auto 18px; }
+.modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 18px; }
+.form-row { margin-bottom: 14px; }
+.form-row label { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
+.form-row input, .form-row select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 16px; padding: 12px 14px; outline: none; -webkit-appearance: none; }
+.form-row input:focus, .form-row select:focus { border-color: var(--accent); }
+.form-row input::placeholder { color: var(--muted); }
+.modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.btn { width: 100%; padding: 15px; border-radius: var(--radius); font-size: 16px; font-weight: 500; font-family: inherit; cursor: pointer; border: none; background: var(--surface2); color: var(--text); }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.cancel { background: transparent; color: var(--muted); font-weight: 400; }
 
-.nav-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.28);
-  padding: 12px 16px 4px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  transition: opacity var(--transition);
-}
-#sidebar.collapsed .nav-section-label { opacity: 0; }
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 9px 14px;
-  cursor: pointer;
-  color: var(--text-sidebar);
-  border-radius: 0;
-  transition: background 0.14s, color 0.14s;
-  user-select: none;
-  border-left: 2px solid transparent;
-  position: relative;
-}
-.nav-item:hover { background: var(--bg-sidebar-hover); color: #fff; }
-.nav-item.active {
-  background: var(--bg-sidebar-active);
-  color: var(--text-sidebar-active);
-  border-left-color: var(--accent);
-}
-.nav-icon {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: rgba(255,255,255,0.1);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
-}
-.nav-icon img { width: 100%; height: 100%; object-fit: cover; }
-.nav-label {
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  transition: opacity var(--transition), width var(--transition);
-}
-#sidebar.collapsed .nav-label { opacity: 0; width: 0; }
-.nav-type-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 99px;
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.5);
-  white-space: nowrap;
-  transition: opacity var(--transition);
-}
-#sidebar.collapsed .nav-type-badge { opacity: 0; }
-
-/* Tooltip on collapsed */
-#sidebar.collapsed .nav-item::after {
-  content: attr(data-label);
-  position: absolute;
-  left: calc(var(--sidebar-w-collapsed) + 6px);
-  background: rgba(20,24,36,0.96);
-  color: #fff;
-  font-size: 12px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 100;
-}
-#sidebar.collapsed .nav-item:hover::after { opacity: 1; }
-
-/* Add button */
-#add-btn-wrap {
-  padding: 10px 10px 14px;
-  flex-shrink: 0;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-#add-btn {
-  width: 100%;
-  padding: 9px 12px;
-  border-radius: 8px;
-  border: 1px dashed rgba(255,255,255,0.2);
-  background: transparent;
-  color: rgba(255,255,255,0.5);
-  font-size: 12px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  gap: 6px;
-  font-family: inherit;
-  transition: border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-  overflow: hidden;
-}
-#add-btn:hover { border-color: rgba(255,255,255,0.45); color: rgba(255,255,255,0.85); }
-.add-btn-label { transition: opacity var(--transition); }
-#sidebar.collapsed .add-btn-label { opacity: 0; width: 0; overflow: hidden; }
-
-/* ── Main ── */
-#main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-/* Top bar */
-#topbar {
-  height: var(--header-h);
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 10px;
-  flex-shrink: 0;
-}
-#current-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#current-url {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 280px;
-}
-#open-x-btn {
-  padding: 6px 12px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  text-decoration: none;
-  display: flex; align-items: center; gap: 5px;
-  transition: background 0.14s;
-}
-#open-x-btn:hover { background: var(--bg); }
-
-/* Frame area */
-#frame-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: var(--bg-panel);
-}
-
-/* Twitter timeline embed */
-#timeline-container {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  justify-content: center;
-  padding: 16px 8px 24px;
-  background: var(--bg);
-  -webkit-overflow-scrolling: touch;
-}
-
-#timeline-inner {
-  width: 100%;
-  max-width: 600px;
-}
-
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 12px;
-  color: var(--text-muted);
-}
-.placeholder .big-icon { font-size: 48px; }
-.placeholder p { font-size: 14px; }
-
-/* Loading overlay */
-#loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  z-index: 10;
-  transition: opacity 0.3s;
-}
-#loading.hidden { opacity: 0; pointer-events: none; }
-.spinner {
-  width: 28px; height: 28px;
-  border: 2.5px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Modal */
-.modal-bg {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 200;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
-}
-.modal {
-  background: var(--bg-panel);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 20px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-}
-.modal h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 14px;
-  color: var(--text-primary);
-}
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.form-row label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-.form-row input {
-  padding: 9px 11px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: inherit;
-  width: 100%;
-}
-.form-row input:focus { outline: none; border-color: var(--accent); }
-.form-row input::placeholder { color: var(--text-muted); }
-.modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-.btn {
-  padding: 8px 16px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-primary);
-}
-.btn:hover { background: var(--bg-sidebar-hover); color: #fff; border-color: transparent; }
-.btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
-.btn.primary:hover { background: var(--accent-hover); }
-.btn.danger { background: #dc2626; color: #fff; border-color: transparent; }
-.btn.danger:hover { opacity: 0.88; }
-
-/* Context menu */
-.ctx-menu {
-  position: fixed;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.16);
-  z-index: 150;
-  overflow: hidden;
-  min-width: 140px;
-}
-.ctx-item {
-  padding: 9px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--text-primary);
-  display: flex; align-items: center; gap: 8px;
-}
-.ctx-item:hover { background: var(--bg); }
-.ctx-item.danger { color: #dc2626; }
-
-/* Mobile overlay sidebar */
-#sidebar-overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 25;
-}
-
-@media (max-width: 640px) {
-  :root { --sidebar-w: 200px; }
-  #sidebar {
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    transform: translateX(-100%);
-    transition: transform var(--transition);
-    width: var(--sidebar-w) !important;
-    min-width: var(--sidebar-w) !important;
-    z-index: 30;
-  }
-  #sidebar.mobile-open {
-    transform: translateX(0);
-  }
-  #sidebar-overlay { display: block; }
-  #sidebar-overlay.visible { display: block; }
-  #main { width: 100%; }
-  #mobile-menu-btn { display: flex !important; }
-  #collapse-btn { display: none; }
-  .logo { opacity: 1 !important; width: auto !important; }
-}
-
-#mobile-menu-btn {
-  display: none;
-  width: 32px; height: 32px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  align-items: center; justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-}
+/* アクションシート */
+.action-sheet { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 8px calc(var(--safe-bottom) + 8px); }
+.action-body { width: 100%; background: #1c1c1e; border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
+.action-title { padding: 14px 16px 10px; font-size: 13px; color: var(--muted); text-align: center; border-bottom: 1px solid var(--border); }
+.action-item { display: flex; align-items: center; justify-content: center; padding: 17px 16px; font-size: 16px; cursor: pointer; border-bottom: 1px solid var(--border); color: var(--text); }
+.action-item:last-child { border-bottom: none; }
+.action-item.danger { color: var(--danger); }
+.action-cancel { width: 100%; background: #1c1c1e; border-radius: 14px; padding: 17px; text-align: center; font-size: 16px; font-weight: 600; cursor: pointer; color: var(--accent); }
 </style>
 </head>
 <body>
-
 <div id="app">
-  <!-- Sidebar -->
-  <nav id="sidebar">
-    <div id="sidebar-header">
-      <div class="logo">x<span>deck</span></div>
-      <button id="collapse-btn" onclick="toggleCollapse()" title="折りたたむ">◀</button>
+  <div id="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
     </div>
-    <div id="nav-list"></div>
-    <div id="add-btn-wrap">
-      <button id="add-btn" onclick="openAddModal()">
-        <span>＋</span>
-        <span class="add-btn-label">フィードを追加</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- Mobile overlay -->
-  <div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
-
-  <!-- Main content -->
-  <div id="main">
-    <div id="topbar">
-      <button id="mobile-menu-btn" onclick="openMobileSidebar()">☰</button>
-      <div id="current-title">フィードを選択してください</div>
-      <div id="current-url"></div>
-      <a id="open-x-btn" href="#" target="_blank" rel="noopener" style="display:none">
-        <span>↗</span> Xで開く
-      </a>
-    </div>
-
-    <div id="frame-wrap">
-      <div id="loading" class="hidden">
-        <div class="spinner"></div>
-      </div>
-      <div id="timeline-container">
-        <div class="placeholder">
-          <div class="big-icon">𝕏</div>
-          <p>左のサイドバーからフィードを選択</p>
-        </div>
-      </div>
-    </div>
+    <span id="header-title">X ランチャー</span>
+    <button id="add-btn">＋</button>
   </div>
+  <div id="list-wrap"></div>
 </div>
-
-<!-- Add/Edit Modal -->
 <div id="modal-root"></div>
-<!-- Context menu -->
-<div id="ctx-root"></div>
+<div id="sheet-root"></div>
 
 <script>
-// ── Default feeds ──
-const DEFAULT_FEEDS = [
-  { id: 'f1', label: 'gihuboy', url: 'https://x.com/gihuboy?lang=ja', type: 'user' },
-  { id: 'f2', label: 'netatank', url: 'https://x.com/netatank?lang=ja', type: 'user' },
-  { id: 'f3', label: 'hiyono_leverage', url: 'https://x.com/hiyono_leverage?lang=ja', type: 'user' },
-  { id: 'f4', label: 'Rdh47nR6HshJl90', url: 'https://x.com/Rdh47nR6HshJl90', type: 'user' },
-  { id: 'f5', label: 'tesuta001', url: 'https://x.com/tesuta001?lang=ja', type: 'user' },
-  { id: 'f6', label: 'リスト①', url: 'https://x.com/i/lists/973136757859401728', type: 'list' },
-  { id: 'f7', label: 'リスト②', url: 'https://x.com/i/lists/30415907', type: 'list' },
-  { id: 'f8', label: 'リスト③', url: 'https://x.com/i/lists/982878496321028096', type: 'list' },
+const IC_LIST = '<svg viewBox="0 0 24 24"><line x1="8" y1="5" x2="20" y2="5"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="19" x2="20" y2="19"/><line x1="3" y1="5" x2="3.01" y2="5"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="19" x2="3.01" y2="19"/></svg>';
+
+const DEFAULT_GROUPS = [
+  {id:'g1',name:'アカウント',open:true},
+  {id:'g2',name:'リスト',open:true},
+];
+const DEFAULT_ITEMS = [
+  {id:'i1',gid:'g1',label:'岐阜暴威',               url:'https://x.com/gihuboy?lang=ja',           type:'account'},
+  {id:'i2',gid:'g1',label:'吉田製作所',              url:'https://x.com/netatank?lang=ja',          type:'account'},
+  {id:'i3',gid:'g1',label:'ひよの⛄️レバナス全力ガール',url:'https://x.com/hiyono_leverage?lang=ja', type:'account'},
+  {id:'i4',gid:'g1',label:'えりこ',                  url:'https://x.com/Rdh47nR6HshJl90',          type:'account'},
+  {id:'i5',gid:'g1',label:'テスタ',                  url:'https://x.com/tesuta001?lang=ja',         type:'account'},
+  {id:'i6',gid:'g2',label:'youtuber',               url:'https://x.com/i/lists/973136757859401728',type:'list'},
+  {id:'i7',gid:'g2',label:'k',                      url:'https://x.com/i/lists/30415907',          type:'list'},
+  {id:'i8',gid:'g2',label:'Economy',                url:'https://x.com/i/lists/982878496321028096',type:'list'},
 ];
 
-// ── State ──
-let feeds = loadFeeds();
-let currentId = null;
-let collapsed = false;
+let groups=[], items=[], activeId=null;
 
-function loadFeeds() {
+function loadData(){
   try {
-    const saved = localStorage.getItem('xdeck_feeds');
-    return saved ? JSON.parse(saved) : [...DEFAULT_FEEDS];
-  } catch(e) { return [...DEFAULT_FEEDS]; }
+    groups = JSON.parse(localStorage.getItem('xlauncher_groups')) || JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+    items  = JSON.parse(localStorage.getItem('xlauncher_items'))  || JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    const last = localStorage.getItem('xlauncher_last_url');
+    activeId = last ? (items.find(i=>i.url===last)||{}).id||null : null;
+  } catch(e) {
+    groups=JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+    items=JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  }
+}
+function saveData(){ localStorage.setItem('xlauncher_groups',JSON.stringify(groups)); localStorage.setItem('xlauncher_items',JSON.stringify(items)); }
+
+function openUrl(item){
+  activeId=item.id;
+  localStorage.setItem('xlauncher_last_url',item.url);
+  renderList();
+  window.location.href=item.url;
 }
 
-function saveFeeds() {
-  localStorage.setItem('xdeck_feeds', JSON.stringify(feeds));
+function initials(l){ return (l||'?').replace(/[^\p{L}\p{N}]/gu,'').slice(0,2).toUpperCase()||'?'; }
+
+function makeAvatar(item){
+  const div=document.createElement('div');
+  if(item.type==='list'){ div.className='nav-avatar list-av'; div.innerHTML=IC_LIST; return div; }
+  div.className='nav-avatar';
+  const handle=(item.url.match(/x\.com\/([^/?]+)/)||[])[1]||'';
+  if(handle){
+    const img=document.createElement('img');
+    img.src=`https://unavatar.io/twitter/${handle}`;
+    img.alt=item.label;
+    img.addEventListener('error',()=>{ div.textContent=initials(item.label); });
+    div.appendChild(img);
+  } else { div.textContent=initials(item.label); }
+  return div;
 }
 
-// ── Parse URL → Twitter widget params ──
-function parseXUrl(url) {
-  try {
-    const u = new URL(url);
-    const path = u.pathname;
+function shortUrl(url){ return url.replace('https://x.com/','@').replace('?lang=ja','').replace('/i/lists/','list/'); }
 
-    // List: /i/lists/123
-    const listMatch = path.match(/^\/i\/lists\/(\d+)/);
-    if (listMatch) {
-      return { type: 'list', listId: listMatch[1] };
-    }
+function renderList(){
+  const wrap=document.getElementById('list-wrap');
+  wrap.innerHTML='';
+  groups.forEach(g=>{
+    const gItems=items.filter(i=>i.gid===g.id);
+    const gh=document.createElement('div');
+    gh.className='group-header';
+    gh.innerHTML=`<span class="group-chevron ${g.open?'open':''}">▶</span><span class="group-name">${g.name}</span><button class="group-open-all">すべて開く</button>`;
+    gh.querySelector('.group-chevron').addEventListener('click',()=>toggleGroup(g.id));
+    gh.querySelector('.group-name').addEventListener('click',()=>toggleGroup(g.id));
+    gh.querySelector('.group-open-all').addEventListener('click',(e)=>{
+      e.stopPropagation();
+      gItems.forEach((item,i)=>setTimeout(()=>window.open(item.url,'_blank'),i*300));
+    });
+    wrap.appendChild(gh);
 
-    // User: /username or /username?...
-    const userMatch = path.match(/^\/@?([^/]+)\/?$/);
-    if (userMatch) {
-      const handle = userMatch[1].replace(/^@/, '');
-      if (!['i', 'search', 'home', 'explore'].includes(handle)) {
-        return { type: 'user', handle };
-      }
-    }
+    const gi=document.createElement('div');
+    gi.className=`group-items${g.open?'':' collapsed'}`;
+    if(!gItems.length){ gi.innerHTML='<div class="empty">アイテムがありません</div>'; }
 
-    return null;
-  } catch(e) { return null; }
-}
+    gItems.forEach(item=>{
+      const el=document.createElement('div');
+      el.className=`nav-item${item.id===activeId?' active':''}`;
+      el.appendChild(makeAvatar(item));
+      const info=document.createElement('div');
+      info.className='nav-info';
+      info.innerHTML=`<div class="nav-label">${item.label}</div><div class="nav-url">${shortUrl(item.url)}</div>`;
+      el.appendChild(info);
+      const arr=document.createElement('span');
+      arr.className='nav-arrow'; arr.textContent='›';
+      el.appendChild(arr);
 
-// ── Build Twitter embed HTML ──
-function buildEmbedHTML(feed) {
-  const parsed = parseXUrl(feed.url);
-  if (!parsed) return null;
+      el.addEventListener('click',()=>openUrl(item));
 
-  const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  const lang = 'ja';
-
-  if (parsed.type === 'list') {
-    return `<a class="twitter-timeline"
-      data-lang="${lang}"
-      data-theme="${theme}"
-      data-tweet-limit="20"
-      data-chrome="noheader nofooter noborders"
-      href="https://twitter.com/i/lists/${parsed.listId}?ref_src=twsrc%5Etfw">
-      リストを読み込み中...</a>`;
-  }
-
-  if (parsed.type === 'user') {
-    return `<a class="twitter-timeline"
-      data-lang="${lang}"
-      data-theme="${theme}"
-      data-tweet-limit="20"
-      data-chrome="noheader nofooter noborders"
-      href="https://twitter.com/${parsed.handle}?ref_src=twsrc%5Etfw">
-      @${parsed.handle} のツイートを読み込み中...</a>`;
-  }
-
-  return null;
-}
-
-// ── Render sidebar nav ──
-function renderNav() {
-  const list = document.getElementById('nav-list');
-
-  // Group: users & lists
-  const users = feeds.filter(f => f.type !== 'list');
-  const lists = feeds.filter(f => f.type === 'list');
-
-  let html = '';
-
-  if (users.length) {
-    html += `<div class="nav-section-label">アカウント</div>`;
-    users.forEach(f => html += navItemHTML(f));
-  }
-  if (lists.length) {
-    html += `<div class="nav-section-label">リスト</div>`;
-    lists.forEach(f => html += navItemHTML(f));
-  }
-
-  list.innerHTML = html;
-
-  // Attach events
-  list.querySelectorAll('.nav-item').forEach(el => {
-    el.addEventListener('click', () => selectFeed(el.dataset.id));
-    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtxMenu(e, el.dataset.id); });
-    el.addEventListener('touchstart', (() => {
-      let t; return () => { t = setTimeout(() => showCtxMenu(null, el.dataset.id, el), 600); };
-    })(), { passive: true });
-    el.addEventListener('touchend', () => clearTimeout(undefined), { passive: true });
+      let pt;
+      el.addEventListener('touchstart',()=>{ pt=setTimeout(()=>showActionSheet(item),600); },{passive:true});
+      el.addEventListener('touchend',()=>clearTimeout(pt),{passive:true});
+      el.addEventListener('touchmove',()=>clearTimeout(pt),{passive:true});
+      gi.appendChild(el);
+    });
+    wrap.appendChild(gi);
   });
 
-  // Update active
-  list.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.id === currentId);
-  });
+  const agb=document.createElement('button');
+  agb.className='add-group-btn';
+  agb.textContent='＋ グループを追加';
+  agb.addEventListener('click',()=>showAddGroupModal());
+  wrap.appendChild(agb);
 }
 
-function navItemHTML(f) {
-  const icon = f.type === 'list' ? '📋' : '👤';
-  const badge = f.type === 'list' ? 'リスト' : 'ユーザー';
-  return `<div class="nav-item" data-id="${f.id}" data-label="${f.label}">
-    <div class="nav-icon">${icon}</div>
-    <span class="nav-label">${f.label}</span>
-    <span class="nav-type-badge">${badge}</span>
-  </div>`;
+function toggleGroup(gid){ const g=groups.find(g=>g.id===gid); if(g){g.open=!g.open;saveData();renderList();} }
+
+function showActionSheet(item){
+  const root=document.getElementById('sheet-root');
+  root.innerHTML=`<div class="action-sheet" id="as"><div class="action-body"><div class="action-title">${item.label}</div><div class="action-item" id="as-open">Xで開く</div><div class="action-item" id="as-edit">編集</div><div class="action-item danger" id="as-del">削除</div></div><div class="action-cancel" id="as-cancel">キャンセル</div></div>`;
+  root.querySelector('#as-open').addEventListener('click',()=>{closeSheet();openUrl(item);});
+  root.querySelector('#as-edit').addEventListener('click',()=>{closeSheet();showEditModal(item.id);});
+  root.querySelector('#as-del').addEventListener('click',()=>{closeSheet();deleteItem(item.id);});
+  root.querySelector('#as-cancel').addEventListener('click',closeSheet);
+  root.querySelector('#as').addEventListener('click',(e)=>{if(e.target.id==='as')closeSheet();});
+}
+function closeSheet(){ document.getElementById('sheet-root').innerHTML=''; }
+
+function showModal(html,onConfirm,onDelete){
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-bg" id="mb"><div class="modal"><div class="modal-handle"></div>${html}</div></div>`;
+  root.querySelector('#mb').addEventListener('click',(e)=>{if(e.target.id==='mb')closeModal();});
+  const cb=root.querySelector('#confirmBtn'); if(cb&&onConfirm)cb.addEventListener('click',onConfirm);
+  const xb=root.querySelector('#cancelBtn');  if(xb)xb.addEventListener('click',closeModal);
+  const db=root.querySelector('#deleteBtn');  if(db&&onDelete)db.addEventListener('click',()=>{closeModal();onDelete();});
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
+
+function showAddModal(defaultGid){
+  const opts=groups.map(g=>`<option value="${g.id}"${g.id===defaultGid?' selected':''}>${g.name}</option>`).join('');
+  showModal(`<h3>フィードを追加</h3>
+    <div class="form-row"><label>グループ</label><select id="inp-gid">${opts}</select></div>
+    <div class="form-row"><label>X の URL</label><input id="inp-url" type="url" placeholder="https://x.com/username" inputmode="url"></div>
+    <div class="form-row"><label>表示名（省略で自動）</label><input id="inp-label" type="text" placeholder="例: テスタ"></div>
+    <div class="modal-actions"><button class="btn primary" id="confirmBtn">追加</button><button class="btn cancel" id="cancelBtn">キャンセル</button></div>`,
+    ()=>{
+      const url=document.getElementById('inp-url').value.trim();
+      const label=document.getElementById('inp-label').value.trim();
+      const gid=document.getElementById('inp-gid').value;
+      if(!url)return;
+      const isList=url.includes('/i/lists/');
+      const auto=isList?(url.match(/lists\/(\d+)/)||[])[1]||'リスト':(url.match(/x\.com\/([^/?]+)/)||[])[1]||url;
+      items.push({id:'i'+Date.now(),gid,label:label||auto,url:url.startsWith('http')?url:'https://'+url,type:isList?'list':'account'});
+      saveData();closeModal();renderList();
+    });
+  setTimeout(()=>document.getElementById('inp-url').focus(),100);
 }
 
-// ── Select feed ──
-function selectFeed(id) {
-  currentId = id;
-  const feed = feeds.find(f => f.id === id);
-  if (!feed) return;
-
-  // Update topbar
-  document.getElementById('current-title').textContent = feed.label;
-  document.getElementById('current-url').textContent = feed.url;
-  const btn = document.getElementById('open-x-btn');
-  btn.href = feed.url;
-  btn.style.display = 'flex';
-
-  // Update nav active
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.id === id);
-  });
-
-  // Show loading
-  showLoading(true);
-
-  // Build embed
-  const embedHTML = buildEmbedHTML(feed);
-  const container = document.getElementById('timeline-inner');
-
-  if (!embedHTML) {
-    document.getElementById('timeline-container').innerHTML = `
-      <div class="placeholder">
-        <div class="big-icon">⚠️</div>
-        <p>このURLの形式には対応していません</p>
-        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">${feed.url}</p>
-      </div>`;
-    showLoading(false);
-    return;
-  }
-
-  // Reset container
-  document.getElementById('timeline-container').innerHTML = `<div id="timeline-inner"></div>`;
-  document.getElementById('timeline-inner').innerHTML = embedHTML;
-
-  // Load or reload Twitter widget script
-  const existing = document.getElementById('tw-widgets-script');
-  if (existing) existing.remove();
-
-  const script = document.createElement('script');
-  script.id = 'tw-widgets-script';
-  script.src = 'https://platform.x.com/widgets.js';
-  script.charset = 'utf-8';
-  script.async = true;
-  script.onload = () => {
-    if (window.twttr && window.twttr.widgets) {
-      window.twttr.widgets.load(document.getElementById('timeline-inner'));
-    }
-    setTimeout(() => showLoading(false), 2000);
-  };
-  script.onerror = () => {
-    showLoading(false);
-    document.getElementById('timeline-container').innerHTML = `
-      <div class="placeholder">
-        <div class="big-icon">🌐</div>
-        <p>ウィジェットの読み込みに失敗しました</p>
-        <p style="font-size:11px;margin-top:4px;color:var(--text-muted)">インターネット接続を確認してください</p>
-      </div>`;
-  };
-  document.head.appendChild(script);
-
-  // Mobile: close sidebar
-  if (window.innerWidth <= 640) closeMobileSidebar();
+function showEditModal(id){
+  const item=items.find(i=>i.id===id); if(!item)return;
+  const opts=groups.map(g=>`<option value="${g.id}"${g.id===item.gid?' selected':''}>${g.name}</option>`).join('');
+  showModal(`<h3>フィードを編集</h3>
+    <div class="form-row"><label>グループ</label><select id="inp-gid">${opts}</select></div>
+    <div class="form-row"><label>表示名</label><input id="inp-label" type="text" value="${item.label}"></div>
+    <div class="form-row"><label>URL</label><input id="inp-url" type="url" value="${item.url}" inputmode="url"></div>
+    <div class="modal-actions"><button class="btn primary" id="confirmBtn">保存</button><button class="btn danger" id="deleteBtn">削除</button><button class="btn cancel" id="cancelBtn">キャンセル</button></div>`,
+    ()=>{
+      item.label=document.getElementById('inp-label').value.trim()||item.label;
+      item.url=document.getElementById('inp-url').value.trim()||item.url;
+      item.gid=document.getElementById('inp-gid').value;
+      item.type=item.url.includes('/i/lists/')?'list':'account';
+      saveData();closeModal();renderList();
+    },
+    ()=>deleteItem(id));
 }
 
-function showLoading(show) {
-  document.getElementById('loading').classList.toggle('hidden', !show);
+function deleteItem(id){
+  const item=items.find(i=>i.id===id); if(!item)return;
+  if(!confirm(`「${item.label}」を削除しますか？`))return;
+  items=items.filter(i=>i.id!==id);
+  if(activeId===id)activeId=null;
+  saveData();renderList();
 }
 
-// ── Collapse ──
-function toggleCollapse() {
-  collapsed = !collapsed;
-  document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
-  document.getElementById('collapse-btn').textContent = collapsed ? '▶' : '◀';
+function showAddGroupModal(){
+  showModal(`<h3>グループを追加</h3>
+    <div class="form-row"><label>グループ名</label><input id="inp-gname" type="text" placeholder="例: FIRE情報"></div>
+    <div class="modal-actions"><button class="btn primary" id="confirmBtn">作成</button><button class="btn cancel" id="cancelBtn">キャンセル</button></div>`,
+    ()=>{
+      const name=document.getElementById('inp-gname').value.trim(); if(!name)return;
+      groups.push({id:'g'+Date.now(),name,open:true});
+      saveData();closeModal();renderList();
+    });
+  setTimeout(()=>document.getElementById('inp-gname').focus(),100);
 }
 
-// ── Mobile sidebar ──
-function openMobileSidebar() {
-  document.getElementById('sidebar').classList.add('mobile-open');
-  document.getElementById('sidebar-overlay').classList.add('visible');
-}
-function closeMobileSidebar() {
-  document.getElementById('sidebar').classList.remove('mobile-open');
-  document.getElementById('sidebar-overlay').classList.remove('visible');
-}
-
-// ── Add/Edit Modal ──
-function openAddModal(editId = null) {
-  const feed = editId ? feeds.find(f => f.id === editId) : null;
-  const title = feed ? 'フィードを編集' : 'フィードを追加';
-
-  document.getElementById('modal-root').innerHTML = `
-    <div class="modal-bg" id="modal-bg">
-      <div class="modal">
-        <h3>${title}</h3>
-        <div class="form-row">
-          <label>表示名</label>
-          <input id="inp-label" type="text" placeholder="例: ゆるFIRE情報" value="${feed ? feed.label : ''}">
-        </div>
-        <div class="form-row">
-          <label>X の URL</label>
-          <input id="inp-url" type="url" placeholder="https://x.com/username または https://x.com/i/lists/..." value="${feed ? feed.url : ''}">
-        </div>
-        <div class="modal-actions">
-          ${feed ? `<button class="btn danger" onclick="deleteFeed('${editId}')">削除</button>` : ''}
-          <button class="btn" onclick="closeModal()">キャンセル</button>
-          <button class="btn primary" onclick="saveFeed(${editId ? `'${editId}'` : 'null'})">${feed ? '保存' : '追加'}</button>
-        </div>
-      </div>
-    </div>`;
-
-  document.getElementById('modal-bg').addEventListener('click', e => {
-    if (e.target.id === 'modal-bg') closeModal();
-  });
-  setTimeout(() => document.getElementById('inp-label').focus(), 50);
-}
-
-function closeModal() {
-  document.getElementById('modal-root').innerHTML = '';
-}
-
-function saveFeed(editId) {
-  const label = document.getElementById('inp-label').value.trim();
-  const url   = document.getElementById('inp-url').value.trim();
-  if (!label || !url) { alert('表示名とURLを入力してください'); return; }
-
-  const parsed = parseXUrl(url);
-  const type = parsed ? (parsed.type === 'list' ? 'list' : 'user') : 'user';
-
-  if (editId) {
-    const idx = feeds.findIndex(f => f.id === editId);
-    if (idx >= 0) feeds[idx] = { ...feeds[idx], label, url, type };
-  } else {
-    feeds.push({ id: 'f' + Date.now(), label, url, type });
-  }
-
-  saveFeeds();
-  closeModal();
-  renderNav();
-  closeCtxMenu();
-}
-
-function deleteFeed(id) {
-  if (!confirm(`「${feeds.find(f=>f.id===id)?.label}」を削除しますか？`)) return;
-  feeds = feeds.filter(f => f.id !== id);
-  if (currentId === id) {
-    currentId = null;
-    document.getElementById('current-title').textContent = 'フィードを選択してください';
-    document.getElementById('current-url').textContent = '';
-    document.getElementById('open-x-btn').style.display = 'none';
-    document.getElementById('timeline-container').innerHTML = `
-      <div class="placeholder">
-        <div class="big-icon">𝕏</div>
-        <p>左のサイドバーからフィードを選択</p>
-      </div>`;
-  }
-  saveFeeds();
-  closeModal();
-  renderNav();
-  closeCtxMenu();
-}
-
-// ── Context menu (right-click / long press) ──
-function showCtxMenu(e, id, el) {
-  closeCtxMenu();
-  const feed = feeds.find(f => f.id === id);
-  if (!feed) return;
-
-  let x, y;
-  if (e) { x = e.clientX; y = e.clientY; }
-  else {
-    const rect = el.getBoundingClientRect();
-    x = rect.right + 4; y = rect.top;
-  }
-
-  document.getElementById('ctx-root').innerHTML = `
-    <div class="ctx-menu" id="ctx-menu" style="left:${x}px;top:${y}px;">
-      <div class="ctx-item" onclick="openAddModal('${id}')">✏️ 編集</div>
-      <div class="ctx-item danger" onclick="deleteFeed('${id}')">🗑 削除</div>
-    </div>`;
-
-  setTimeout(() => document.addEventListener('click', closeCtxMenu, { once: true }), 10);
-}
-
-function closeCtxMenu() {
-  document.getElementById('ctx-root').innerHTML = '';
-}
-
-// ── Init ──
-renderNav();
-
-// Twitter widget event: hide loading when rendered
-window.twttr = window.twttr || {};
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.twttr && window.twttr.events) {
-    window.twttr.events.bind('rendered', () => showLoading(false));
-  }
-});
+loadData();
+renderList();
+document.getElementById('add-btn').addEventListener('click',()=>showAddModal(groups[0]?.id));
 </script>
 </body>
 </html>
